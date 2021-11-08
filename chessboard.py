@@ -10,6 +10,8 @@ window.borderless = False
 window.size = 1980,1080
 window.center_on_screen()
 
+chessboard = []
+
 #The class for the board.
 class Square(Entity):
 
@@ -50,7 +52,6 @@ class Square(Entity):
 
             if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4:
                 piece.position = (piece.org_pos)
-                return
 
         piece.drag = drag
         piece.drop = drop
@@ -72,8 +73,13 @@ def make_board():
         board.add(f"{color}knight",(2,y))
         board.add(f"{color}rook",(3,y))
 
-        y = 4 #For the top of the board
+        if color == "white":y += 1
+        else:y -= 1
 
+        for x in range(-4,4):
+            board.add(f"{color}pawn",(x,y))
+
+        y = 4 #For the top of the board
 
 #Initializing the board
 board = Square()

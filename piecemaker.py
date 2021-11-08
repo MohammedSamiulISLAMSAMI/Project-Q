@@ -20,6 +20,8 @@ for row in range(0,2):
         left = right - 200
 
         im1 = im.crop((left, top, right, bottom))
+        if not os.path.exists("pieces/"):
+            os.mkdir("pieces/")
 
         if not os.path.exists(f"pieces/{colors[row]}{pieces[column]}.png"):
             print(f"Creating {colors[row]}{pieces[column]}.png")
