@@ -49,6 +49,7 @@ class Square(Entity):
 
         #Code to add options
         def updateoptions():
+            piece.options = []
             if "white" in piece.piece:
                 if "pawn" in piece.piece:
                     if piece.org_pos[1] == -2:
@@ -83,8 +84,46 @@ class Square(Entity):
                     piece.options.append(get_position(piece.org_pos,(-2 * multiplier,1 * multiplier)))
                     piece.options.append(get_position(piece.org_pos,(-1 * multiplier,2 * multiplier)))
 
+            #NOTE: board on x range (-4 to 3), on y range (-3 to 4)
+            #bishops can double jump??
             elif "bishop" in piece.piece:
-                pass
+                for factor in range(-7,8):
+
+                    finalpos = get_position(piece.org_pos,(factor,factor))
+                    if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
+                        piece.options.append(finalpos)
+
+                    finalpos = get_position(piece.org_pos,(factor,-factor))
+                    if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
+                        piece.options.append(finalpos)
+
+            elif "king" in piece.piece:
+                for multiplier in range(-1,2,2):
+                    piece.options.append(get_position(piece.org_pos,(1 * multiplier, 1 * multiplier)))
+                    piece.options.append(get_position(piece.org_pos,(1 * multiplier, -1 * multiplier)))
+                    piece.options.append(get_position(piece.org_pos,(0, 1 * multiplier)))
+                    piece.options.append(get_position(piece.org_pos,(1 * multiplier, 0)))
+
+            elif "queen" in piece.piece:
+                for x in range(-4,4):
+                    if x == piece.org_pos[0]:
+                        continue
+                    piece.options.append((x,piece.org_pos[1]))
+
+                for y in range(-3,5):
+                    if y == piece.org_pos[1]:
+                        continue
+                    piece.options.append((piece.org_pos[0],y))
+
+                for factor in range(-7,8):
+
+                    finalpos = get_position(piece.org_pos,(factor,factor))
+                    if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
+                        piece.options.append(finalpos)
+
+                    finalpos = get_position(piece.org_pos,(factor,-factor))
+                    if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
+                        piece.options.append(finalpos)
 
         #Things the code does right before dragging the piece
         def drag():
@@ -98,8 +137,6 @@ class Square(Entity):
             piece.x = round(piece.x)
             piece.y = round(piece.y)
 
-            #Piece rules here :--
-            #NOTE: Define the rules on x and y
             illegalMove = False
 
             if not (piece.x,piece.y) in piece.options:
