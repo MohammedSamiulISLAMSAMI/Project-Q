@@ -39,16 +39,18 @@ def check_collision(src, dest, piece):
     if vector[0] == 0:
         if vector[1] < 0:step = -1
 
-        for y in range(1,vector[1],step):
+        for y in range(1*step,vector[1],step):
             checkTuple = src[0],src[1]+y
+
             if chessboard[checkTuple] != None:
                 return False
 
     elif vector[1] == 0:
          if vector[0] < 0:step = -1
 
-         for x in range(1,vector[0],step):
+         for x in range(1*step,vector[0],step):
              checkTuple = src[0]+x,src[1]
+
              if chessboard[checkTuple] != None:
                  return False
 
