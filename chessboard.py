@@ -11,10 +11,63 @@ window.borderless = False
 window.size = 1980,1080
 window.center_on_screen()
 
-chessboard = []
+chessboard = {}
+for x in range(-4,4):
+    for y in range(-3,5):
+        chessboard[(x,y)] = None
+
+
 def get_position(src, vector):
     finalpos = (vector[0] + src[0], vector[1] + src[1])
     return finalpos
+
+def get_vector(src, dest):
+    vector = (int(dest[0] - src[0]), int(dest[1] - src[1]))
+    return vector
+
+def check_collision(src, dest, piece):
+
+    if chessboard[dest] != None:
+        pass
+
+    if "knight" in piece:
+        return True
+
+    vector = get_vector(src,dest)
+    step = 1
+
+    if vector[0] == 0:
+        if vector[1] < 0:step = -1
+
+        for y in range(1,vector[1],step):
+            checkTuple = src[0],src[1]+y
+            if chessboard[checkTuple] != None:
+                return False
+
+    elif vector[1] == 0:
+         if vector[0] < 0:step = -1
+
+         for x in range(1,vector[0],step):
+             checkTuple = src[0]+x,src[1]
+             if chessboard[checkTuple] != None:
+                 return False
+
+    elif abs(vector[0]) == abs(vector[1]):
+        stepx, stepy = 1, 1
+        if vector[0] < 0:stepx = -1
+        if vector[1] < 0:stepy = -1
+
+        for x in range(1,abs(vector[0])):
+            checkTuple = src[0] + (x * stepx), src[1] + (x * stepy)
+            if chessboard[checkTuple] != None:
+                return False
+
+    else:
+        print("ERROR; vector case not recognized",vector)
+
+    # print(f"Source: {src}, Dest: {dest}, Vector: {vector}")
+    return True
+
 #The class for the board.
 class Square(Entity):
 
@@ -142,8 +195,15 @@ class Square(Entity):
             if not (piece.x,piece.y) in piece.options:
                 illegalMove = True
 
-            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove:
+            if not illegalMove:
+                collisionTest =  not check_collision(piece.org_pos, (piece.x,piece.y), piece.piece)
+
+            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove or collisionTest:
                 piece.position = piece.org_pos
+
+            else:
+                chessboard[piece.x,piece.y] = piece.piece
+                chessboard[piece.org_pos] = None
 
         piece.drag = drag
         piece.drop = drop
@@ -165,17 +225,28 @@ def make_board():
         board.add(f"{color}knight",(2,y))
         board.add(f"{color}rook",(3,y))
 
-        if color == "white":y += 1
-        else:y -= 1
+        chessboard[(-4,y)] = f"{color}rook"
+        chessboard[(-3,y)] = f"{color}knight"
+        chessboard[(-2,y)] = f"{color}bishop"
+        chessboard[(-1,y)] = f"{color}queen"
+        chessboard[(0,y)] = f"{color}king"
+        chessboard[(1,y)] = f"{color}bishop"
+        chessboard[(2,y)] = f"{color}knight"
+        chessboard[(3,y)] = f"{color}rook"
+
+        if color == "white":
+            y += 1
+        else:
+            y -= 1
 
         for x in range(-4,4):
             board.add(f"{color}pawn",(x,y))
+            chessboard[(x,y)] = f"{color}pawn"
 
         y = 4 #For the top of the board
 
 #Initializing the board
 board = Square()
-
 #Creating blank squares for the "look" of the baord
 #NOTE: board on x range (-4 to 3), on y range (-3 to 4)
 #NOTE: using colors rgba(181,136,99,255) (black) and rgba(240,217,181,255) (white)
