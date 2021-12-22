@@ -11,11 +11,12 @@ window.borderless = False
 window.size = 1980,1080
 window.center_on_screen()
 
+lastPawn = None
+
 chessboard = {}
 for x in range(-4,4):
     for y in range(-3,5):
         chessboard[(x,y)] = None
-
 
 def get_position(src, vector):
     finalpos = (vector[0] + src[0], vector[1] + src[1])
@@ -28,7 +29,7 @@ def get_vector(src, dest):
 def check_collision(src, dest, piece):
 
     if chessboard[dest] != None:
-        pass
+        chessboard[dest].enabled = False
 
     if "knight" in piece:
         return True
@@ -97,6 +98,8 @@ class Square(Entity):
             position = coord
         )
 
+        chessboard[coord] = piece
+
         #Makes a easy way to get the piece type
         setattr(piece, "piece", picture)
         #Makes a easy way to get the possible moves
@@ -110,14 +113,16 @@ class Square(Entity):
                     if piece.org_pos[1] == -2:
                         piece.options.append(get_position(piece.org_pos,(0,2)))
 
-                    piece.options.append(get_position(piece.org_pos,(0,1)))
+                    for x in range(-1,2):
+                        piece.options.append(get_position(piece.org_pos,(x,1)))
 
             else:
                 if "pawn" in piece.piece:
                     if piece.org_pos[1] == 3:
                         piece.options.append(get_position(piece.org_pos,(0,-2)))
 
-                    piece.options.append(get_position(piece.org_pos,(0,-1)))
+                    for x in range(-1,2):
+                        piece.options.append(get_position(piece.org_pos,(x,-1)))
 
 
             if "rook" in piece.piece:
@@ -188,24 +193,41 @@ class Square(Entity):
         #Things the code does right after dropping the piece
         def drop():
 
+            global lastPawn
+
             #The code to place the piece
             piece.x = round(piece.x)
             piece.y = round(piece.y)
 
             illegalMove = False
+            if "pawn" in piece.piece and int(piece.org_pos[0] - piece.x) != 0 and chessboard[(piece.x,piece.y)] == None:
+                if lastPawn != None and (piece.x,piece.org_pos[1]) == (lastPawn.position[0],lastPawn.position[1]):
+                    chessboard[(lastPawn.position[0],lastPawn.position[1])].enabled = False
+                else:
+                    illegalMove = True
 
-            if not (piece.x,piece.y) in piece.options:
+            elif not (piece.x,piece.y) in piece.options or (piece.x,piece.y) == piece.org_pos:
                 illegalMove = True
 
-            if not illegalMove:
-                collisionTest =  not check_collision(piece.org_pos, (piece.x,piece.y), piece.piece)
+            else:
+                illegalMove =  not check_collision(piece.org_pos, (piece.x,piece.y), piece.piece)
 
-            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove or collisionTest:
+            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove:
                 piece.position = piece.org_pos
 
             else:
-                chessboard[piece.x,piece.y] = piece.piece
+                chessboard[piece.x,piece.y] = piece
                 chessboard[piece.org_pos] = None
+
+                if "pawn" in piece.piece and abs(int(piece.org_pos[1] - piece.y)) == 2:
+                    lastPawn = piece
+                    print(lastPawn)
+
+                else:
+                    lastPawn = None
+                    print(lastPawn)
+
+
 
         piece.drag = drag
         piece.drop = drop
@@ -227,15 +249,6 @@ def make_board():
         board.add(f"{color}knight",(2,y))
         board.add(f"{color}rook",(3,y))
 
-        chessboard[(-4,y)] = f"{color}rook"
-        chessboard[(-3,y)] = f"{color}knight"
-        chessboard[(-2,y)] = f"{color}bishop"
-        chessboard[(-1,y)] = f"{color}queen"
-        chessboard[(0,y)] = f"{color}king"
-        chessboard[(1,y)] = f"{color}bishop"
-        chessboard[(2,y)] = f"{color}knight"
-        chessboard[(3,y)] = f"{color}rook"
-
         if color == "white":
             y += 1
         else:
@@ -243,7 +256,6 @@ def make_board():
 
         for x in range(-4,4):
             board.add(f"{color}pawn",(x,y))
-            chessboard[(x,y)] = f"{color}pawn"
 
         y = 4 #For the top of the board
 
