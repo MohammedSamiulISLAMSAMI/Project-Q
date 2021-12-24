@@ -26,9 +26,12 @@ def get_vector(src, dest):
     vector = (int(dest[0] - src[0]), int(dest[1] - src[1]))
     return vector
 
-def check_collision(src, dest, piece):
+def check_collision(src, dest, piece = "none"):
 
-    if chessboard[dest] != None:
+    if chessboard[dest] != None and piece != "castling":
+        if chessboard[src].piece[:5] ==  chessboard[dest].piece[:5]:
+            return False
+
         chessboard[dest].enabled = False
 
     if "knight" in piece:
@@ -104,6 +107,12 @@ class Square(Entity):
         setattr(piece, "piece", picture)
         #Makes a easy way to get the possible moves
         setattr(piece, "options", [])
+
+        if "king" in picture or "rook" in picture:
+            setattr(piece, "moved", False)
+
+        else:
+            setattr(piece, "moved", True)
 
         #Code to add options
         def updateoptions():
@@ -200,9 +209,41 @@ class Square(Entity):
             piece.y = round(piece.y)
 
             illegalMove = False
-            if "pawn" in piece.piece and int(piece.org_pos[0] - piece.x) != 0 and chessboard[(piece.x,piece.y)] == None:
-                if lastPawn != None and (piece.x,piece.org_pos[1]) == (lastPawn.position[0],lastPawn.position[1]):
-                    if "white" in piece.piece and (piece.y - piece.org_pos[1]) != 1:
+            #checking if a pawn has moved into an empty square
+            if "king" in piece.piece and abs(piece.x - piece.org_pos[0]) == 2 and piece.y - piece.org_pos[1] == 0:
+                if "white" in piece.piece:
+                    y = -3
+
+                else:
+                    y = 4
+
+                if (piece.x - piece.org_pos[0]) == 2:
+                    x = 3
+                    x2 = 1
+                else:
+                    x = -4
+                    x2 = -1
+
+                if not piece.moved:
+                    if check_collision((0,y),(x,y), "castling") and not chessboard[(x,y)].moved:
+                        chessboard[(0,y)] = None
+                        chessboard[piece.x,piece.y] = piece
+
+                        chessboard[(x,y)], chessboard[(x2,y)] = None, chessboard[(x,y)]
+                        chessboard[(x2,y)].position = (x2,y)
+
+                        piece.moved = True
+
+                    else:
+                        illegalMove = True
+
+                else:
+                    illegalMove = True
+
+
+            elif "pawn" in piece.piece and int(piece.org_pos[0] - piece.x) != 0 and chessboard[(piece.x,piece.y)] == None:
+                if lastPawn != None and (piece.x,piece.org_pos[1]) == (lastPawn.position[0],lastPawn.position[1]): #checking if the square is near the pawn to be enpassant
+                    if "white" in piece.piece and (piece.y - piece.org_pos[1]) != 1: #making sure the pawn doesnt enpassant backwards
                         illegalMove = True
 
                     elif "black" in piece.piece and (piece.y - piece.org_pos[1]) != -1:
@@ -216,25 +257,29 @@ class Square(Entity):
                 else:
                     illegalMove = True
 
+            #checking if the move is not valid or if the piece has moved on itself (ie not moved)
             elif not (piece.x,piece.y) in piece.options or (piece.x,piece.y) == piece.org_pos:
                 illegalMove = True
 
-            else:
+            else: #check if the move goes over a piece
                 illegalMove =  not check_collision(piece.org_pos, (piece.x,piece.y), piece.piece)
 
-            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove:
+            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove: #if out of bounds or illegal
                 piece.position = piece.org_pos
 
-            else:
+            else: #captures the piece and changing values in the dictionaries updating them.
                 chessboard[piece.x,piece.y] = piece
                 chessboard[piece.org_pos] = None
 
-                if "pawn" in piece.piece and abs(int(piece.org_pos[1] - piece.y)) == 2:
+                if "pawn" in piece.piece and abs(int(piece.org_pos[1] - piece.y)) == 2: #for enpassant rules
                     lastPawn = piece
+
+                elif "king" in piece.piece or "rook" in piece.piece: #for castling rules
+                    piece.moved = True
+
 
                 else:
                     lastPawn = None
-
 
 
         piece.drag = drag
