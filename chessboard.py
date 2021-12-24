@@ -202,7 +202,17 @@ class Square(Entity):
             illegalMove = False
             if "pawn" in piece.piece and int(piece.org_pos[0] - piece.x) != 0 and chessboard[(piece.x,piece.y)] == None:
                 if lastPawn != None and (piece.x,piece.org_pos[1]) == (lastPawn.position[0],lastPawn.position[1]):
-                    chessboard[(lastPawn.position[0],lastPawn.position[1])].enabled = False
+                    if "white" in piece.piece and (piece.y - piece.org_pos[1]) != 1:
+                        illegalMove = True
+
+                    elif "black" in piece.piece and (piece.y - piece.org_pos[1]) != -1:
+                        illegalMove = True
+
+                    else:
+                        chessboard[(lastPawn.position[0],lastPawn.position[1])].enabled = False
+                        chessboard[(lastPawn.position[0],lastPawn.position[1])] = None
+                        chessboard[piece.x,piece.y] = piece
+
                 else:
                     illegalMove = True
 
@@ -221,11 +231,9 @@ class Square(Entity):
 
                 if "pawn" in piece.piece and abs(int(piece.org_pos[1] - piece.y)) == 2:
                     lastPawn = piece
-                    print(lastPawn)
 
                 else:
                     lastPawn = None
-                    print(lastPawn)
 
 
 
