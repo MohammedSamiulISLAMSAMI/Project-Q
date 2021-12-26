@@ -12,6 +12,8 @@ window.size = 1980,1080
 window.center_on_screen()
 
 lastPawn = None
+turnCount = 0
+kings = {}
 
 chessboard = {}
 for x in range(-4,4):
@@ -26,13 +28,18 @@ def get_vector(src, dest):
     vector = (int(dest[0] - src[0]), int(dest[1] - src[1]))
     return vector
 
-def check_collision(src, dest, piece = "none"):
-
-    if chessboard[dest] != None and piece != "castling":
+def check_collision(src, dest, piece):
+    print(chessboard[src].piece)
+    if chessboard[dest] != None:
+        print(chessboard[dest].piece)
         if chessboard[src].piece[:5] ==  chessboard[dest].piece[:5]:
             return False
 
-        chessboard[dest].enabled = False
+        elif "king" in chessboard[dest].piece:
+            pass
+
+        else:
+            chessboard[dest].enabled = False
 
     if "knight" in piece:
         return True
@@ -74,6 +81,43 @@ def check_collision(src, dest, piece = "none"):
     # print(f"Source: {src}, Dest: {dest}, Vector: {vector}")
     return True
 
+def check_check():
+    if turnCount % 2 == 1:
+        lastPlayed = "black"
+        toPlay = "black"
+
+    else:
+        lastPlayed = "white"
+        toPlay = "black"
+
+def check_self_check():
+    if turnCount % 2 == 1:
+        lastPlayed = "black"
+        toPlay = "black"
+
+    else:
+        lastPlayed = "white"
+        toPlay = "black"
+
+    counter = 0
+    for tuple in chessboard:
+        piece = chessboard[tuple]
+        if piece == None:
+            continue
+
+        if lastPlayed in piece.piece:
+            continue
+
+        piece.org_pos = piece.x,piece.y
+        piece.updateoptions()
+
+        if (kings[lastPlayed].x,kings[lastPlayed].y) in piece.options:
+            print(f"{piece.piece} at position {piece.org_pos} is eyeing the {lastPlayed}king")
+            print(check_collision(piece.org_pos, (kings[lastPlayed].x,kings[lastPlayed].y), piece.piece))
+
+    #check_checkmate()
+
+
 #The class for the board.
 class Square(Entity):
 
@@ -91,6 +135,10 @@ class Square(Entity):
 
     #Code to add a draggable piece easily
     def add(self,picture,coord):
+
+        global whiteking
+        global blackking
+
         piece = Draggable(
             parent = board.sq_parent,
             model = "quad",
@@ -113,6 +161,12 @@ class Square(Entity):
 
         else:
             setattr(piece, "moved", True)
+
+        if "whiteking" == picture:
+            kings["white"] = piece
+
+        elif "blackking" == picture:
+            kings["black"] = piece
 
         #Code to add options
         def updateoptions():
@@ -194,23 +248,29 @@ class Square(Entity):
                     if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
                         piece.options.append(finalpos)
 
+        setattr(piece,"updateoptions",updateoptions)
         #Things the code does right before dragging the piece
         def drag():
             piece.org_pos = (piece.x, piece.y)
-            updateoptions()
+            piece.updateoptions()
 
         #Things the code does right after dropping the piece
         def drop():
 
             global lastPawn
+            global turnCount
 
             #The code to place the piece
             piece.x = round(piece.x)
             piece.y = round(piece.y)
 
             illegalMove = False
-            #checking if a pawn has moved into an empty square
-            if "king" in piece.piece and abs(piece.x - piece.org_pos[0]) == 2 and piece.y - piece.org_pos[1] == 0:
+
+            #checking if the kign has moved 2 places
+            if ("white" in piece.piece and turnCount % 2 == 1) or ("black" in piece.piece and turnCount % 2 == 0):
+                illegalMove = True
+
+            elif "king" in piece.piece and abs(piece.x - piece.org_pos[0]) == 2 and piece.y - piece.org_pos[1] == 0:
                 if "white" in piece.piece:
                     y = -3
 
@@ -225,7 +285,7 @@ class Square(Entity):
                     x2 = -1
 
                 if not piece.moved:
-                    if check_collision((0,y),(x,y), "castling") and not chessboard[(x,y)].moved:
+                    if check_collision((0,y),(x,y), piece.piece) and not chessboard[(x,y)].moved:
                         chessboard[(0,y)] = None
                         chessboard[piece.x,piece.y] = piece
 
@@ -240,7 +300,7 @@ class Square(Entity):
                 else:
                     illegalMove = True
 
-
+            #checking if a pawn has moved into an empty square
             elif "pawn" in piece.piece and int(piece.org_pos[0] - piece.x) != 0 and chessboard[(piece.x,piece.y)] == None:
                 if lastPawn != None and (piece.x,piece.org_pos[1]) == (lastPawn.position[0],lastPawn.position[1]): #checking if the square is near the pawn to be enpassant
                     if "white" in piece.piece and (piece.y - piece.org_pos[1]) != 1: #making sure the pawn doesnt enpassant backwards
@@ -264,12 +324,23 @@ class Square(Entity):
             else: #check if the move goes over a piece
                 illegalMove =  not check_collision(piece.org_pos, (piece.x,piece.y), piece.piece)
 
-            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove: #if out of bounds or illegal
+            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4:
+                illegalMove = True
+
+            else:
+                # chessboard[piece.x,piece.y] = piece
+                # chessboard[piece.org_pos] = None
+
+                check_self_check()
+
+            if illegalMove: #if out of bounds or illegal
                 piece.position = piece.org_pos
 
             else: #captures the piece and changing values in the dictionaries updating them.
                 chessboard[piece.x,piece.y] = piece
                 chessboard[piece.org_pos] = None
+
+                turnCount += 1
 
                 if "pawn" in piece.piece and abs(int(piece.org_pos[1] - piece.y)) == 2: #for enpassant rules
                     lastPawn = piece
@@ -277,9 +348,11 @@ class Square(Entity):
                 elif "king" in piece.piece or "rook" in piece.piece: #for castling rules
                     piece.moved = True
 
-
                 else:
                     lastPawn = None
+
+                check_check()
+
 
 
         piece.drag = drag
