@@ -26,15 +26,15 @@ def get_vector(src, dest):
     vector = (int(dest[0] - src[0]), int(dest[1] - src[1]))
     return vector
 
-def check_collision(src, dest, piece = "none"):
-
+def capture(src,dest,piece):
     if chessboard[dest] != None and piece != "castling":
         if chessboard[src].piece[:5] ==  chessboard[dest].piece[:5]:
             return False
 
         chessboard[dest].enabled = False
-
+def check_collision(src, dest, piece = "none"):
     if "knight" in piece:
+        capture(src, dest, piece)
         return True
 
     vector = get_vector(src,dest)
@@ -72,6 +72,7 @@ def check_collision(src, dest, piece = "none"):
         print("ERROR; vector case not recognized",vector)
 
     # print(f"Source: {src}, Dest: {dest}, Vector: {vector}")
+    capture(src, dest, piece)
     return True
 
 #The class for the board.
