@@ -28,20 +28,16 @@ def get_vector(src, dest):
     vector = (int(dest[0] - src[0]), int(dest[1] - src[1]))
     return vector
 
-def check_collision(src, dest, piece):
-    print(chessboard[src].piece)
-    if chessboard[dest] != None:
-        print(chessboard[dest].piece)
+def capture(src,dest,piece):
+    if chessboard[dest] != None and piece != "castling":
         if chessboard[src].piece[:5] ==  chessboard[dest].piece[:5]:
             return False
 
-        elif "king" in chessboard[dest].piece:
-            pass
+        chessboard[dest].enabled = False
 
-        else:
-            chessboard[dest].enabled = False
-
+def check_collision(src, dest, piece = "none"):
     if "knight" in piece:
+        capture(src, dest, piece)
         return True
 
     vector = get_vector(src,dest)
@@ -79,44 +75,8 @@ def check_collision(src, dest, piece):
         print("ERROR; vector case not recognized",vector)
 
     # print(f"Source: {src}, Dest: {dest}, Vector: {vector}")
+    capture(src, dest, piece)
     return True
-
-def check_check():
-    if turnCount % 2 == 1:
-        lastPlayed = "black"
-        toPlay = "black"
-
-    else:
-        lastPlayed = "white"
-        toPlay = "black"
-
-def check_self_check():
-    if turnCount % 2 == 1:
-        lastPlayed = "black"
-        toPlay = "black"
-
-    else:
-        lastPlayed = "white"
-        toPlay = "black"
-
-    counter = 0
-    for tuple in chessboard:
-        piece = chessboard[tuple]
-        if piece == None:
-            continue
-
-        if lastPlayed in piece.piece:
-            continue
-
-        piece.org_pos = piece.x,piece.y
-        piece.updateoptions()
-
-        if (kings[lastPlayed].x,kings[lastPlayed].y) in piece.options:
-            print(f"{piece.piece} at position {piece.org_pos} is eyeing the {lastPlayed}king")
-            print(check_collision(piece.org_pos, (kings[lastPlayed].x,kings[lastPlayed].y), piece.piece))
-
-    #check_checkmate()
-
 
 #The class for the board.
 class Square(Entity):
@@ -265,11 +225,9 @@ class Square(Entity):
             piece.y = round(piece.y)
 
             illegalMove = False
-
-            #checking if the kign has moved 2 places
+            #checking if a pawn has moved into an empty square
             if ("white" in piece.piece and turnCount % 2 == 1) or ("black" in piece.piece and turnCount % 2 == 0):
                 illegalMove = True
-
             elif "king" in piece.piece and abs(piece.x - piece.org_pos[0]) == 2 and piece.y - piece.org_pos[1] == 0:
                 if "white" in piece.piece:
                     y = -3
@@ -285,7 +243,7 @@ class Square(Entity):
                     x2 = -1
 
                 if not piece.moved:
-                    if check_collision((0,y),(x,y), piece.piece) and not chessboard[(x,y)].moved:
+                    if check_collision((0,y),(x,y), "castling") and not chessboard[(x,y)].moved:
                         chessboard[(0,y)] = None
                         chessboard[piece.x,piece.y] = piece
 
@@ -300,7 +258,7 @@ class Square(Entity):
                 else:
                     illegalMove = True
 
-            #checking if a pawn has moved into an empty square
+
             elif "pawn" in piece.piece and int(piece.org_pos[0] - piece.x) != 0 and chessboard[(piece.x,piece.y)] == None:
                 if lastPawn != None and (piece.x,piece.org_pos[1]) == (lastPawn.position[0],lastPawn.position[1]): #checking if the square is near the pawn to be enpassant
                     if "white" in piece.piece and (piece.y - piece.org_pos[1]) != 1: #making sure the pawn doesnt enpassant backwards
@@ -324,16 +282,7 @@ class Square(Entity):
             else: #check if the move goes over a piece
                 illegalMove =  not check_collision(piece.org_pos, (piece.x,piece.y), piece.piece)
 
-            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4:
-                illegalMove = True
-
-            else:
-                # chessboard[piece.x,piece.y] = piece
-                # chessboard[piece.org_pos] = None
-
-                check_self_check()
-
-            if illegalMove: #if out of bounds or illegal
+            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove: #if out of bounds or illegal
                 piece.position = piece.org_pos
 
             else: #captures the piece and changing values in the dictionaries updating them.
@@ -348,11 +297,9 @@ class Square(Entity):
                 elif "king" in piece.piece or "rook" in piece.piece: #for castling rules
                     piece.moved = True
 
+
                 else:
                     lastPawn = None
-
-                check_check()
-
 
 
         piece.drag = drag
