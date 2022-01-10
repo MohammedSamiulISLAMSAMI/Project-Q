@@ -84,7 +84,7 @@ def check_attack(pos, ownColor):
         if piece == None:
             continue
 
-        if not ownColor in piece.piece:
+        if ownColor in piece.piece:
             continue
 
         piece.updateoptions((piece.x,piece.y))
@@ -101,21 +101,10 @@ def check_check(lastPlayed):
     if lastPlayed == "white":kingcolor = "black"
     else:kingcolor = "white"
 
-    for tuple in chessboard:
-        piece = chessboard[tuple]
-        if piece == None:
-            continue
-
-        if not lastPlayed in piece.piece:
-            continue
-
-        piece.updateoptions((piece.x,piece.y))
-        if (kings[kingcolor].x,kings[kingcolor].y) in piece.options:
-            if check_collision((piece.x,piece.y), (kings[kingcolor].x,kings[kingcolor].y), piece.piece):
-                checked_square = getsquare[kings[kingcolor].x,kings[kingcolor].y]
-                checked_square.color = color.red
-
-                return True
+    if check_attack((kings[kingcolor].x,kings[kingcolor].y), kingcolor):
+        checked_square = getsquare[kings[kingcolor].x,kings[kingcolor].y]
+        checked_square.color = color.red
+        return True
 
     return False
 
@@ -348,7 +337,7 @@ class Square(Entity):
                 if check_check(toPlay):
                     illegalMove = True
 
-                if not check_check(lastPlayed) and checked_square != None: #moving the king error
+                if not check_check(lastPlayed) and checked_square != None and not illegalMove: #moving the king error
                     if (checked_square.x - .5) % 2 == 0 and (checked_square.y + .5) % 2 == 0:
                         checked_square.color = color.rgba(181,136,99,255)
 
