@@ -35,7 +35,6 @@ def capture(src,dest,piece):
 
 def check_collision(src, dest, piece):
     if "knight" in piece:
-        capture(src, dest, piece)
         return True
 
     if chessboard[dest] != None and chessboard[src] != None and piece != "castling":
@@ -77,7 +76,6 @@ def check_collision(src, dest, piece):
         print("ERROR; vector case not recognized",vector)
 
     # print(f"Source: {src}, Dest: {dest}, Vector: {vector}")
-    capture(src, dest, piece)
     return True
 
 def check_attack(pos, ownColor):
