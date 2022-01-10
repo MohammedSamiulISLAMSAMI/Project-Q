@@ -12,6 +12,9 @@ window.size = 1980,1080
 window.center_on_screen()
 
 lastPawn = None
+checked_square = None
+turnCount = 0
+kings = {}
 
 chessboard = {}
 for x in range(-4,4):
@@ -27,15 +30,17 @@ def get_vector(src, dest):
     return vector
 
 def capture(src,dest,piece):
-    if chessboard[dest] != None and piece != "castling":
-        if chessboard[src].piece[:5] ==  chessboard[dest].piece[:5]:
-            return False
+    chessboard[dest].enabled = False
+    return True
 
-        chessboard[dest].enabled = False
-def check_collision(src, dest, piece = "none"):
+def check_collision(src, dest, piece):
     if "knight" in piece:
         capture(src, dest, piece)
         return True
+
+    if chessboard[dest] != None and chessboard[src] != None and piece != "castling":
+        if chessboard[src].piece[:5] ==  chessboard[dest].piece[:5]:
+            return False
 
     vector = get_vector(src,dest)
     step = 1
@@ -75,6 +80,50 @@ def check_collision(src, dest, piece = "none"):
     capture(src, dest, piece)
     return True
 
+def check_attack(pos, ownColor):
+    for tuple in chessboard:
+        piece = chessboard[tuple]
+        if piece == None:
+            continue
+
+        if not ownColor in piece.piece:
+            continue
+
+        piece.updateoptions((piece.x,piece.y))
+        if pos in piece.options:
+            if check_collision((piece.x,piece.y), pos, piece.piece):
+                return True
+
+    return False
+
+def check_check(lastPlayed):
+
+    global checked_square
+
+    if lastPlayed == "white":kingcolor = "black"
+    else:kingcolor = "white"
+
+    for tuple in chessboard:
+        piece = chessboard[tuple]
+        if piece == None:
+            continue
+
+        if not lastPlayed in piece.piece:
+            continue
+
+        piece.updateoptions((piece.x,piece.y))
+        if (kings[kingcolor].x,kings[kingcolor].y) in piece.options:
+            if check_collision((piece.x,piece.y), (kings[kingcolor].x,kings[kingcolor].y), piece.piece):
+                checked_square = getsquare[kings[kingcolor].x,kings[kingcolor].y]
+                checked_square.color = color.red
+
+                return True
+
+    return False
+
+def check_checkmate():
+    pass
+
 #The class for the board.
 class Square(Entity):
 
@@ -92,6 +141,10 @@ class Square(Entity):
 
     #Code to add a draggable piece easily
     def add(self,picture,coord):
+
+        global whiteking
+        global blackking
+
         piece = Draggable(
             parent = board.sq_parent,
             model = "quad",
@@ -115,103 +168,114 @@ class Square(Entity):
         else:
             setattr(piece, "moved", True)
 
+        if "whiteking" == picture:
+            kings["white"] = piece
+
+        elif "blackking" == picture:
+            kings["black"] = piece
+
         #Code to add options
-        def updateoptions():
+        def updateoptions(position):
             piece.options = []
             if "white" in piece.piece:
                 if "pawn" in piece.piece:
-                    if piece.org_pos[1] == -2:
-                        piece.options.append(get_position(piece.org_pos,(0,2)))
+                    if position[1] == -2:
+                        piece.options.append(get_position(position,(0,2)))
 
                     for x in range(-1,2):
-                        piece.options.append(get_position(piece.org_pos,(x,1)))
+                        piece.options.append(get_position(position,(x,1)))
 
             else:
                 if "pawn" in piece.piece:
-                    if piece.org_pos[1] == 3:
-                        piece.options.append(get_position(piece.org_pos,(0,-2)))
+                    if position[1] == 3:
+                        piece.options.append(get_position(position,(0,-2)))
 
                     for x in range(-1,2):
-                        piece.options.append(get_position(piece.org_pos,(x,-1)))
+                        piece.options.append(get_position(position,(x,-1)))
 
 
             if "rook" in piece.piece:
                 for x in range(-4,4):
-                    if x == piece.org_pos[0]:
+                    if x == position[0]:
                         continue
-                    piece.options.append((x,piece.org_pos[1]))
+                    piece.options.append((x,position[1]))
 
                 for y in range(-3,5):
-                    if y == piece.org_pos[1]:
+                    if y == position[1]:
                         continue
-                    piece.options.append((piece.org_pos[0],y))
+                    piece.options.append((position[0],y))
 
             elif "knight" in piece.piece:
                 for multiplier in range(-1,2,2):
                     #ERROR HERE
-                    piece.options.append(get_position(piece.org_pos,(1 * multiplier,2 * multiplier)))
-                    piece.options.append(get_position(piece.org_pos,(2 * multiplier,1 * multiplier)))
-                    piece.options.append(get_position(piece.org_pos,(-2 * multiplier,1 * multiplier)))
-                    piece.options.append(get_position(piece.org_pos,(-1 * multiplier,2 * multiplier)))
+                    piece.options.append(get_position(position,(1 * multiplier,2 * multiplier)))
+                    piece.options.append(get_position(position,(2 * multiplier,1 * multiplier)))
+                    piece.options.append(get_position(position,(-2 * multiplier,1 * multiplier)))
+                    piece.options.append(get_position(position,(-1 * multiplier,2 * multiplier)))
 
             #NOTE: board on x range (-4 to 3), on y range (-3 to 4)
             #bishops can double jump??
             elif "bishop" in piece.piece:
                 for factor in range(-7,8):
 
-                    finalpos = get_position(piece.org_pos,(factor,factor))
+                    finalpos = get_position(position,(factor,factor))
                     if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
                         piece.options.append(finalpos)
 
-                    finalpos = get_position(piece.org_pos,(factor,-factor))
+                    finalpos = get_position(position,(factor,-factor))
                     if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
                         piece.options.append(finalpos)
 
             elif "king" in piece.piece:
                 for multiplier in range(-1,2,2):
-                    piece.options.append(get_position(piece.org_pos,(1 * multiplier, 1 * multiplier)))
-                    piece.options.append(get_position(piece.org_pos,(1 * multiplier, -1 * multiplier)))
-                    piece.options.append(get_position(piece.org_pos,(0, 1 * multiplier)))
-                    piece.options.append(get_position(piece.org_pos,(1 * multiplier, 0)))
+                    piece.options.append(get_position(position,(1 * multiplier, 1 * multiplier)))
+                    piece.options.append(get_position(position,(1 * multiplier, -1 * multiplier)))
+                    piece.options.append(get_position(position,(0, 1 * multiplier)))
+                    piece.options.append(get_position(position,(1 * multiplier, 0)))
 
             elif "queen" in piece.piece:
                 for x in range(-4,4):
-                    if x == piece.org_pos[0]:
+                    if x == position[0]:
                         continue
-                    piece.options.append((x,piece.org_pos[1]))
+                    piece.options.append((x,position[1]))
 
                 for y in range(-3,5):
-                    if y == piece.org_pos[1]:
+                    if y == position[1]:
                         continue
-                    piece.options.append((piece.org_pos[0],y))
+                    piece.options.append((position[0],y))
 
                 for factor in range(-7,8):
 
-                    finalpos = get_position(piece.org_pos,(factor,factor))
+                    finalpos = get_position(position,(factor,factor))
                     if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
                         piece.options.append(finalpos)
 
-                    finalpos = get_position(piece.org_pos,(factor,-factor))
+                    finalpos = get_position(position,(factor,-factor))
                     if finalpos[0] >= -4 and finalpos[0] <= 3 and finalpos[1] <= 4 and finalpos[1] >= -3:
                         piece.options.append(finalpos)
 
+        setattr(piece,"updateoptions",updateoptions)
         #Things the code does right before dragging the piece
         def drag():
             piece.org_pos = (piece.x, piece.y)
-            updateoptions()
+            piece.updateoptions(piece.org_pos)
 
         #Things the code does right after dropping the piece
         def drop():
 
             global lastPawn
+            global turnCount
 
             #The code to place the piece
             piece.x = round(piece.x)
             piece.y = round(piece.y)
 
-            illegalMove = False
+            illegalMove, flag = False, False
             #checking if a pawn has moved into an empty square
-            if "king" in piece.piece and abs(piece.x - piece.org_pos[0]) == 2 and piece.y - piece.org_pos[1] == 0:
+            if ("white" in piece.piece and turnCount % 2 == 1) or ("black" in piece.piece and turnCount % 2 == 0):
+                illegalMove = True
+
+            elif "king" in piece.piece and abs(piece.x - piece.org_pos[0]) == 2 and piece.y - piece.org_pos[1] == 0:
                 if "white" in piece.piece:
                     y = -3
 
@@ -233,14 +297,13 @@ class Square(Entity):
                         chessboard[(x,y)], chessboard[(x2,y)] = None, chessboard[(x,y)]
                         chessboard[(x2,y)].position = (x2,y)
 
-                        piece.moved = True
+                        piece.moved, flag = True, True
 
                     else:
                         illegalMove = True
 
                 else:
                     illegalMove = True
-
 
             elif "pawn" in piece.piece and int(piece.org_pos[0] - piece.x) != 0 and chessboard[(piece.x,piece.y)] == None:
                 if lastPawn != None and (piece.x,piece.org_pos[1]) == (lastPawn.position[0],lastPawn.position[1]): #checking if the square is near the pawn to be enpassant
@@ -255,6 +318,8 @@ class Square(Entity):
                         chessboard[(lastPawn.position[0],lastPawn.position[1])] = None
                         chessboard[piece.x,piece.y] = piece
 
+                        flag = True
+
                 else:
                     illegalMove = True
 
@@ -262,15 +327,55 @@ class Square(Entity):
             elif not (piece.x,piece.y) in piece.options or (piece.x,piece.y) == piece.org_pos:
                 illegalMove = True
 
+            elif piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4:
+                illegalMove = True
+
             else: #check if the move goes over a piece
                 illegalMove =  not check_collision(piece.org_pos, (piece.x,piece.y), piece.piece)
 
-            if piece.x <= -5 or piece.x >= 4 or piece.y >= 5 or piece.y <= -4 or illegalMove: #if out of bounds or illegal
-                piece.position = piece.org_pos
+            if turnCount % 2 == 1:
+                lastPlayed = "black"
+                toPlay = "white"
 
-            else: #captures the piece and changing values in the dictionaries updating them.
+            else:
+                lastPlayed = "white"
+                toPlay = "black"
+
+            if not illegalMove:
+                temp1 = chessboard[piece.x,piece.y]
+
                 chessboard[piece.x,piece.y] = piece
                 chessboard[piece.org_pos] = None
+
+                if check_check(toPlay):
+                    illegalMove = True
+
+                if not check_check(lastPlayed) and checked_square != None: #moving the king error
+                    if (checked_square.x - .5) % 2 == 0 and (checked_square.y + .5) % 2 == 0:
+                        checked_square.color = color.rgba(181,136,99,255)
+
+                    else:
+                        checked_square.color = color.rgba(240,217,181,255)
+
+
+
+                chessboard[piece.x,piece.y] = temp1
+                chessboard[piece.org_pos] = piece
+
+            # check_self_check()
+            if illegalMove: #if out of bounds or illegal
+                piece.position = piece.org_pos
+
+            elif not flag: #captures the piece and changing values in the dictionaries updating them.
+                if chessboard[piece.x, piece.y] != None:
+                    capture(piece.org_pos, (piece.x, piece.y), piece.piece)
+
+                chessboard[piece.x,piece.y] = piece
+                chessboard[piece.org_pos] = None
+
+
+            if not illegalMove:
+                turnCount += 1
 
                 if "pawn" in piece.piece and abs(int(piece.org_pos[1] - piece.y)) == 2: #for enpassant rules
                     lastPawn = piece
@@ -278,10 +383,8 @@ class Square(Entity):
                 elif "king" in piece.piece or "rook" in piece.piece: #for castling rules
                     piece.moved = True
 
-
                 else:
                     lastPawn = None
-
 
         piece.drag = drag
         piece.drop = drop
@@ -319,6 +422,7 @@ board = Square()
 #NOTE: board on x range (-4 to 3), on y range (-3 to 4)
 #NOTE: using colors rgba(181,136,99,255) (black) and rgba(240,217,181,255) (white)
 count, yChess = 0, 9
+getsquare = {} #change this to getsquare with a dict of coords and getting the square of those coords
 for y in range(7,-9,-2): #The amount of rows
     count += 1
     yChess -= 1
@@ -334,6 +438,8 @@ for y in range(7,-9,-2): #The amount of rows
         else: #Creating the white squares
             square = Entity(parent=board.sq_parent, position = (x/2,y/2), color = color.rgba(181,136,99,255), model = "quad")
             count = 2
+
+        getsquare[(x/2-0.5,y/2 + 0.5)] = square
 
 
 make_board()
