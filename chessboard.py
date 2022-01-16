@@ -265,11 +265,13 @@ class Square(Entity):
             elif "king" in piece.piece and abs(piece.x - piece.org_pos[0]) == 2 and piece.y - piece.org_pos[1] == 0:
                 if "white" in piece.piece:
                     y = -3
+                    ownColor = "white"
 
                 else:
                     y = 4
+                    ownColor = "black"
 
-                if (piece.x - piece.org_pos[0]) == 2:
+                if (piece.x - piece.org_pos[0]) == 2: #check if king side
                     x = 3
                     x2 = 1
                 else:
@@ -277,7 +279,12 @@ class Square(Entity):
                     x2 = -1
 
                 if not piece.moved:
-                    if check_collision((0,y),(x,y), "castling") and not chessboard[(x,y)].moved:
+                    for multiplier in range(0,3):
+                        if check_attack((piece.org_pos[0] + (multiplier * x2), piece.org_pos[1]),ownColor): #testing required here
+                            illegalMove = True
+                            break
+
+                    if check_collision((0,y),(x,y), "castling") and not chessboard[(x,y)].moved and not illegalMove:
                         chessboard[(0,y)] = None
                         chessboard[piece.x,piece.y] = piece
 
@@ -334,7 +341,7 @@ class Square(Entity):
                 chessboard[piece.x,piece.y] = piece
                 chessboard[piece.org_pos] = None
 
-                if check_check(toPlay):
+                if check_check(toPlay): #check for illegal move that caused by check.
                     illegalMove = True
 
                 if not check_check(lastPlayed) and checked_square != None and not illegalMove: #moving the king error
