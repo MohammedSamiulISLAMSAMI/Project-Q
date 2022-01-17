@@ -355,6 +355,13 @@ class Square(Entity):
 
                 chessboard[piece.x,piece.y] = temp1
                 chessboard[piece.org_pos] = piece
+                
+                if not check_check(lastPlayed) and checked_square != None:
+                    if (checked_square.x - .5) % 2 == 0 and (checked_square.y + .5) % 2 == 0:
+                        checked_square.color = color.rgba(181,136,99,255)
+
+                    else:
+                        checked_square.color = color.rgba(240,217,181,255)
 
             # check_self_check()
             if illegalMove: #if out of bounds or illegal
