@@ -87,8 +87,15 @@ def check_attack(pos, ownColor):
             continue
 
         piece.updateoptions((piece.x,piece.y))
-        if pos in piece.options:
+        if "pawn" in piece.piece:
+            if pos in piece.attackoptions:
+                print("passed in pawn")
+                print(piece.position, piece.attackoptions, pos)
+                return True
+
+        elif pos in piece.options: #for this change to attack for pawns
             if check_collision((piece.x,piece.y), pos, "skip"):
+                print("passed in collision")
                 return True
 
     return False
@@ -101,6 +108,7 @@ def check_check(lastPlayed):
     else:kingcolor = "white"
 
     if check_attack((kings[kingcolor].x,kings[kingcolor].y), kingcolor):
+        print("stopped")
         checked_square = getsquare[kings[kingcolor].x,kings[kingcolor].y]
         checked_square.color = color.red
         return True
@@ -147,6 +155,9 @@ class Square(Entity):
         setattr(piece, "piece", picture)
         #Makes a easy way to get the possible moves
         setattr(piece, "options", [])
+        #Makes a easy way to get the possible attack moves for pawns
+        if "pawn" in picture:
+            setattr(piece, "attackoptions", [])
 
         if "king" in picture or "rook" in picture:
             setattr(piece, "moved", False)
@@ -165,19 +176,25 @@ class Square(Entity):
             piece.options = []
             if "white" in piece.piece:
                 if "pawn" in piece.piece:
+                    piece.attackoptions = []
                     if position[1] == -2:
                         piece.options.append(get_position(position,(0,2)))
 
                     for x in range(-1,2):
                         piece.options.append(get_position(position,(x,1)))
+                        if x == 0:continue
+                        piece.attackoptions.append(get_position(position,(x,1)))
 
             else:
                 if "pawn" in piece.piece:
+                    piece.attackoptions = []
                     if position[1] == 3:
                         piece.options.append(get_position(position,(0,-2)))
 
                     for x in range(-1,2):
                         piece.options.append(get_position(position,(x,-1)))
+                        if x == 0:continue
+                        piece.attackoptions.append(get_position(position,(x,1)))
 
 
             if "rook" in piece.piece:
