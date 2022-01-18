@@ -37,13 +37,12 @@ def check_collision(src, dest, piece):
     if "knight" in piece:
         return True
 
-    if chessboard[dest] != None and chessboard[src] != None and piece != "castling":
+    if chessboard[dest] != None and chessboard[src] != None and piece != "skip":
         if chessboard[src].piece[:5] ==  chessboard[dest].piece[:5]:
             return False
 
     vector = get_vector(src,dest)
     step = 1
-
     if vector[0] == 0:
         if vector[1] < 0:step = -1
 
@@ -54,13 +53,13 @@ def check_collision(src, dest, piece):
                 return False
 
     elif vector[1] == 0:
-         if vector[0] < 0:step = -1
+        if vector[0] < 0:step = -1
 
-         for x in range(1*step,vector[0],step):
-             checkTuple = src[0]+x,src[1]
+        for x in range(1*step,vector[0],step):
+         checkTuple = src[0]+x,src[1]
 
-             if chessboard[checkTuple] != None:
-                 return False
+         if chessboard[checkTuple] != None:
+             return False
 
     elif abs(vector[0]) == abs(vector[1]):
         stepx, stepy = 1, 1
@@ -89,7 +88,7 @@ def check_attack(pos, ownColor):
 
         piece.updateoptions((piece.x,piece.y))
         if pos in piece.options:
-            if check_collision((piece.x,piece.y), pos, piece.piece):
+            if check_collision((piece.x,piece.y), pos, "skip"):
                 return True
 
     return False
@@ -284,7 +283,7 @@ class Square(Entity):
                             illegalMove = True
                             break
 
-                    if check_collision((0,y),(x,y), "castling") and not chessboard[(x,y)].moved and not illegalMove:
+                    if check_collision((0,y),(x,y), "skip") and not chessboard[(x,y)].moved and not illegalMove:
                         chessboard[(0,y)] = None
                         chessboard[piece.x,piece.y] = piece
 
@@ -344,7 +343,7 @@ class Square(Entity):
                 if check_check(toPlay): #check for illegal move that caused by check.
                     illegalMove = True
 
-                if not check_check(lastPlayed) and checked_square != None and not illegalMove: #moving the king error
+                if not check_check(lastPlayed) and checked_square != None and not illegalMove:
                     if (checked_square.x - .5) % 2 == 0 and (checked_square.y + .5) % 2 == 0:
                         checked_square.color = color.rgba(181,136,99,255)
 
@@ -355,9 +354,9 @@ class Square(Entity):
 
                 chessboard[piece.x,piece.y] = temp1
                 chessboard[piece.org_pos] = piece
-                
-                if not check_check(lastPlayed) and checked_square != None:
-                    if (checked_square.x - .5) % 2 == 0 and (checked_square.y + .5) % 2 == 0:
+
+                if not check_check(lastPlayed) and checked_square != None: #this evaluting after check therefore not working
+                    if (checked_square.x - .5) % 2 == (checked_square.y + .5) % 2:
                         checked_square.color = color.rgba(181,136,99,255)
 
                     else:
@@ -422,26 +421,16 @@ board = Square()
 #Creating blank squares for the "look" of the baord
 #NOTE: board on x range (-4 to 3), on y range (-3 to 4)
 #NOTE: using colors rgba(181,136,99,255) (black) and rgba(240,217,181,255) (white)
-count, yChess = 0, 9
 getsquare = {} #change this to getsquare with a dict of coords and getting the square of those coords
-for y in range(7,-9,-2): #The amount of rows
-    count += 1
-    yChess -= 1
-    xChess = 0
-
-    for x in range(-7,9,2): #The amount of columns
-        xChess += 1
-
-        if count == 2: #Creating the black squares
-            square = Entity(parent=board.sq_parent, position = (x/2,y/2), color = color.rgba(240,217,181,255), model = "quad")
-            count = 1
-
-        else: #Creating the white squares
+for y in range(7,-9,-2):
+    for x in range(-7,9,2):
+        if ((x/2) - .5) % 2 == ((y/2) + .5) % 2:
             square = Entity(parent=board.sq_parent, position = (x/2,y/2), color = color.rgba(181,136,99,255), model = "quad")
-            count = 2
+
+        else:
+            square = Entity(parent=board.sq_parent, position = (x/2,y/2), color = color.rgba(240,217,181,255), model = "quad")
 
         getsquare[(x/2-0.5,y/2 + 0.5)] = square
-
 
 make_board()
 app.run()
