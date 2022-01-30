@@ -33,12 +33,14 @@ def capture(src,dest,piece):
     chessboard[dest].enabled = False
     return True
 
-def check_collision(src, dest, piece):
-    if "knight" in piece:
-        return True
+#NOTE: board on x range (-4 to 3), on y range (-3 to 4)
+def check_collision(src, dest, type): #returns true if there is no collison
+    if chessboard[src] != None:
+        if "knight" in chessboard[src].piece:
+            return True
 
-    if chessboard[dest] != None and chessboard[src] != None and piece != "skip":
-        if chessboard[src].piece[:5] ==  chessboard[dest].piece[:5]:
+    if chessboard[dest] != None and chessboard[src] != None and type != "skip":
+        if chessboard[src].piece[:5] == chessboard[dest].piece[:5]:
             return False
 
     vector = get_vector(src,dest)
@@ -77,7 +79,7 @@ def check_collision(src, dest, piece):
     # print(f"Source: {src}, Dest: {dest}, Vector: {vector}")
     return True
 
-def check_attack(pos, ownColor):
+def check_attack(pos, ownColor, type = "skip"): #returns True if there is an attack
     for tuple in chessboard:
         piece = chessboard[tuple]
         if piece == None:
@@ -89,16 +91,46 @@ def check_attack(pos, ownColor):
         piece.updateoptions((piece.x,piece.y))
         if "pawn" in piece.piece:
             if pos in piece.attackoptions:
-                print("passed in pawn")
-                print(piece.position, piece.attackoptions, pos)
+                # print("passed in pawn")
+                # print(piece.position, piece.attackoptions, pos)
                 return True
 
-        elif pos in piece.options: #for this change to attack for pawns
-            if check_collision((piece.x,piece.y), pos, "skip"):
-                print("passed in collision")
+        elif pos in piece.options:
+            if check_collision((piece.x,piece.y), pos, type):
                 return True
 
     return False
+
+def returnAttackers(pos, ownColor, type = "skip"):
+    returnList = []
+    for tuple in chessboard:
+        piece = chessboard[tuple]
+        if piece == None:
+            continue
+
+        if ownColor in piece.piece:
+            continue
+
+        piece.updateoptions((piece.x,piece.y))
+        if "pawn" in piece.piece:
+            if type == "skip"
+                if pos in piece.attackoptions:
+                    print(pos,piece.piece, (piece.x,piece.y))
+                    print(piece.options, piece.attackoptions)
+                    returnList.append(piece)
+            else:
+                if pos in piece.options:
+                    print(pos,piece.piece, (piece.x,piece.y))
+                    print(piece.options, piece.attackoptions)
+                    returnList.append(piece)
+
+        elif pos in piece.options:
+            if check_collision((piece.x,piece.y), pos, type):
+                print(pos,piece.piece, (piece.x,piece.y))
+                print(piece.options)
+                returnList.append(piece)
+
+    return returnList
 
 def check_check(lastPlayed):
 
@@ -108,15 +140,79 @@ def check_check(lastPlayed):
     else:kingcolor = "white"
 
     if check_attack((kings[kingcolor].x,kings[kingcolor].y), kingcolor):
-        print("stopped")
         checked_square = getsquare[kings[kingcolor].x,kings[kingcolor].y]
         checked_square.color = color.red
+        if check_checkmate(kingcolor):
+            print("checkmate!!")
         return True
 
     return False
 
-def check_checkmate():
-    pass
+#NOTE: board on x range (-4 to 3), on y range (-3 to 4)
+def check_checkmate(kingcolor):
+
+    global checked_square
+
+    checkmate = True
+    piece = kings[kingcolor]
+
+    count = 0
+    for x in range(-1,2):
+        for y in range(-1,2):
+            count += 1
+            pos = get_position((piece.x,piece.y),(x,y))
+
+            if x == 0  and y == 0:
+                continue
+
+            elif pos[0] <= -5 or pos[0] >= 4 or pos[1] >= 5 or pos[1] <= -4:
+                continue
+
+            elif chessboard[pos] != None:
+                if kingcolor in chessboard[pos].piece:
+                    continue
+
+            if not check_attack(pos, kingcolor, "checkmate"):
+                checkmate = False
+
+    attackers = returnAttackers((piece.x,piece.y), kingcolor)
+    if checkmate and len(attackers) == 1:
+        attacker = attackers[0]
+        if check_attack((attacker.x,attacker.y),attacker.piece[:5]):
+            print("attacker can be captured")
+            checkmate = False
+
+        else:
+            coords = []
+            vector = get_vector((attacker.x,attacker.y),(piece.x,piece.y))
+            if vector[0] == vector[1]:
+                for operand in range(1,vector[0]):
+                    coords.append(get_position((attacker.x,attacker.y),(operand,operand)))
+
+            elif vector[0] == 0:
+                for operand in range(1,vector[1]):
+                    coords.append(get_position((attacker.x,attacker.y),(0,operand)))
+
+            elif vector[1] == 0:
+                for operand in range(1,vector[0]):
+                    coords.append(get_position((attacker.x,attacker.y),(operand,0)))
+
+            else:
+                print("ERROR; vector case not recognized",vector)
+
+            for coord in coords:
+                print("start")
+                blockerList = returnAttackers(coord, attacker.piece[:5], "checkmate")
+                if blockerList:
+                    for blocker in blockerList:
+                        if "king" in blocker.piece:continue
+                        print(coords)
+                        print(blocker.piece,blocker.x,blocker.y)
+                        print("attacker can be blocked")
+                        checkmate = False
+
+
+    return checkmate
 
 #The class for the board.
 class Square(Entity):
@@ -414,14 +510,15 @@ def make_board():
     for color in piecemaker.colors:
 
         #Adding the pieces to the board.
-        board.add(f"{color}rook",(-4,y))
-        board.add(f"{color}knight",(-3,y))
-        board.add(f"{color}bishop",(-2,y))
-        board.add(f"{color}queen",(-1,y))
+        # board.add(f"{color}rook",(-4,y))
+        # board.add(f"{color}knight",(-3,y))
+        # board.add(f"{color}bishop",(-2,y))
+        if color=="white":board.add(f"{color}queen",(-1,y))
+        else:board.add(f"{color}bishop",(-1,y))
         board.add(f"{color}king",(0,y))
         board.add(f"{color}bishop",(1,y))
-        board.add(f"{color}knight",(2,y))
-        board.add(f"{color}rook",(3,y))
+        # board.add(f"{color}knight",(2,y))
+        # board.add(f"{color}rook",(3,y))
 
         if color == "white":
             y += 1
@@ -429,7 +526,9 @@ def make_board():
             y -= 1
 
         for x in range(-4,4):
+            if color == "white":continue
             board.add(f"{color}pawn",(x,y))
+            pass
 
         y = 4 #For the top of the board
 
