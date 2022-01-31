@@ -100,7 +100,7 @@ def check_attack(pos, ownColor, type = "skip"): #returns True if there is an att
                 return True
 
     return False
-
+#NOTE: board on x range (-4 to 3), on y range (-3 to 4)
 def returnAttackers(pos, ownColor, type = "skip"):
     returnList = []
     for tuple in chessboard:
@@ -113,16 +113,18 @@ def returnAttackers(pos, ownColor, type = "skip"):
 
         piece.updateoptions((piece.x,piece.y))
         if "pawn" in piece.piece:
-            if type == "skip"
-                if pos in piece.attackoptions:
-                    print(pos,piece.piece, (piece.x,piece.y))
-                    print(piece.options, piece.attackoptions)
-                    returnList.append(piece)
-            else:
+            if type == "checkmate":
+                for element in piece.attackoptions:
+                    if element in piece.options:
+                        piece.options.remove(element)
+
                 if pos in piece.options:
-                    print(pos,piece.piece, (piece.x,piece.y))
-                    print(piece.options, piece.attackoptions)
                     returnList.append(piece)
+
+            elif pos in piece.attackoptions:
+                print(pos,piece.piece, (piece.x,piece.y))
+                print(piece.options, piece.attackoptions)
+                returnList.append(piece)
 
         elif pos in piece.options:
             if check_collision((piece.x,piece.y), pos, type):
@@ -153,7 +155,6 @@ def check_checkmate(kingcolor):
 
     global checked_square
 
-    checkmate = True
     piece = kings[kingcolor]
 
     count = 0
@@ -172,17 +173,18 @@ def check_checkmate(kingcolor):
                 if kingcolor in chessboard[pos].piece:
                     continue
 
-            if not check_attack(pos, kingcolor, "checkmate"):
-                checkmate = False
+            if not check_attack(pos, kingcolor):
+                return False
 
     attackers = returnAttackers((piece.x,piece.y), kingcolor)
-    if checkmate and len(attackers) == 1:
+    if len(attackers) == 1:
         attacker = attackers[0]
         if check_attack((attacker.x,attacker.y),attacker.piece[:5]):
             print("attacker can be captured")
-            checkmate = False
+            return False
 
         else:
+            if "knight" in attacker.piece:return True
             coords = []
             vector = get_vector((attacker.x,attacker.y),(piece.x,piece.y))
             if vector[0] == vector[1]:
@@ -209,10 +211,10 @@ def check_checkmate(kingcolor):
                         print(coords)
                         print(blocker.piece,blocker.x,blocker.y)
                         print("attacker can be blocked")
-                        checkmate = False
+                        return False
 
 
-    return checkmate
+    return True
 
 #The class for the board.
 class Square(Entity):
@@ -290,7 +292,7 @@ class Square(Entity):
                     for x in range(-1,2):
                         piece.options.append(get_position(position,(x,-1)))
                         if x == 0:continue
-                        piece.attackoptions.append(get_position(position,(x,1)))
+                        piece.attackoptions.append(get_position(position,(x,-1)))
 
 
             if "rook" in piece.piece:
@@ -458,10 +460,10 @@ class Square(Entity):
 
                 if not check_check(lastPlayed) and checked_square != None and not illegalMove:
                     if (checked_square.x - .5) % 2 == 0 and (checked_square.y + .5) % 2 == 0:
-                        checked_square.color = color.rgba(181,136,99,255)
+                        checked_square.color = color.rgba(240,217,181,255)
 
                     else:
-                        checked_square.color = color.rgba(240,217,181,255)
+                        checked_square.color = color.rgba(181,136,99,255)
 
 
 
@@ -470,10 +472,10 @@ class Square(Entity):
 
                 if not check_check(lastPlayed) and checked_square != None: #this evaluting after check therefore not working
                     if (checked_square.x - .5) % 2 == (checked_square.y + .5) % 2:
-                        checked_square.color = color.rgba(181,136,99,255)
+                        checked_square.color = color.rgba(240,217,181,255)
 
                     else:
-                        checked_square.color = color.rgba(240,217,181,255)
+                        checked_square.color = color.rgba(181,136,99,255)
 
             # check_self_check()
             if illegalMove: #if out of bounds or illegal
@@ -510,15 +512,14 @@ def make_board():
     for color in piecemaker.colors:
 
         #Adding the pieces to the board.
-        # board.add(f"{color}rook",(-4,y))
-        # board.add(f"{color}knight",(-3,y))
-        # board.add(f"{color}bishop",(-2,y))
-        if color=="white":board.add(f"{color}queen",(-1,y))
-        else:board.add(f"{color}bishop",(-1,y))
+        board.add(f"{color}rook",(-4,y))
+        board.add(f"{color}knight",(-3,y))
+        board.add(f"{color}bishop",(-2,y))
+        board.add(f"{color}queen",(-1,y))
         board.add(f"{color}king",(0,y))
         board.add(f"{color}bishop",(1,y))
-        # board.add(f"{color}knight",(2,y))
-        # board.add(f"{color}rook",(3,y))
+        board.add(f"{color}knight",(2,y))
+        board.add(f"{color}rook",(3,y))
 
         if color == "white":
             y += 1
@@ -526,7 +527,6 @@ def make_board():
             y -= 1
 
         for x in range(-4,4):
-            if color == "white":continue
             board.add(f"{color}pawn",(x,y))
             pass
 
@@ -541,10 +541,10 @@ getsquare = {} #change this to getsquare with a dict of coords and getting the s
 for y in range(7,-9,-2):
     for x in range(-7,9,2):
         if ((x/2) - .5) % 2 == ((y/2) + .5) % 2:
-            square = Entity(parent=board.sq_parent, position = (x/2,y/2), color = color.rgba(181,136,99,255), model = "quad")
+            square = Entity(parent=board.sq_parent, position = (x/2,y/2), color = color.rgba(240,217,181,255), model = "quad")
 
         else:
-            square = Entity(parent=board.sq_parent, position = (x/2,y/2), color = color.rgba(240,217,181,255), model = "quad")
+            square = Entity(parent=board.sq_parent, position = (x/2,y/2), color = color.rgba(181,136,99,255), model = "quad")
 
         getsquare[(x/2-0.5,y/2 + 0.5)] = square
 
