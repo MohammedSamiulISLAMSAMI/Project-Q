@@ -15,6 +15,7 @@ lastPawn = None
 checked_square = None
 turnCount = 0
 kings = {}
+chessboardList = []
 
 chessboard = {}
 for x in range(-4,4):
@@ -35,9 +36,10 @@ def capture(src,dest,piece):
 
 #NOTE: board on x range (-4 to 3), on y range (-3 to 4)
 def check_collision(src, dest, type): #returns true if there is no collison
-    if chessboard[src] != None:
+    if chessboard[src] != None and chessboard[dest] != None:
         if "knight" in chessboard[src].piece:
-            return True
+            if chessboard[src].piece[:5] != chessboard[dest].piece[:5]:
+                return True
 
     if chessboard[dest] != None and chessboard[src] != None and type != "skip":
         if chessboard[src].piece[:5] == chessboard[dest].piece[:5]:
@@ -76,7 +78,6 @@ def check_collision(src, dest, type): #returns true if there is no collison
     else:
         print("ERROR; vector case not recognized",vector)
 
-    # print(f"Source: {src}, Dest: {dest}, Vector: {vector}")
     return True
 
 def check_attack(pos, ownColor, type = "skip"): #returns True if there is an attack
@@ -100,6 +101,7 @@ def check_attack(pos, ownColor, type = "skip"): #returns True if there is an att
                 return True
 
     return False
+
 #NOTE: board on x range (-4 to 3), on y range (-3 to 4)
 def returnAttackers(pos, ownColor, type = "skip"):
     returnList = []
@@ -187,34 +189,190 @@ def check_checkmate(kingcolor):
             if "knight" in attacker.piece:return True
             coords = []
             vector = get_vector((attacker.x,attacker.y),(piece.x,piece.y))
-            if vector[0] == vector[1]:
+
+            if abs(vector[0]) == abs(vector[1]):
+                if vector[0] < 0:stepx = -1
+                if vector[1] < 0:stepy = -1
                 for operand in range(1,vector[0]):
-                    coords.append(get_position((attacker.x,attacker.y),(operand,operand)))
+                    coords.append(get_position((attacker.x,attacker.y),(operand * stepx,operand * stepy)))
 
             elif vector[0] == 0:
+                if vector[1] < 0:stepy = -1
                 for operand in range(1,vector[1]):
-                    coords.append(get_position((attacker.x,attacker.y),(0,operand)))
+                    coords.append(get_position((attacker.x,attacker.y),(0,operand * stepy)))
 
             elif vector[1] == 0:
+                if vector[0] < 0:stepx = -1
                 for operand in range(1,vector[0]):
-                    coords.append(get_position((attacker.x,attacker.y),(operand,0)))
+                    coords.append(get_position((attacker.x,attacker.y),(operand * stepx,0)))
 
             else:
                 print("ERROR; vector case not recognized",vector)
 
             for coord in coords:
-                print("start")
                 blockerList = returnAttackers(coord, attacker.piece[:5], "checkmate")
                 if blockerList:
                     for blocker in blockerList:
                         if "king" in blocker.piece:continue
-                        print(coords)
-                        print(blocker.piece,blocker.x,blocker.y)
-                        print("attacker can be blocked")
                         return False
 
+    winColor = attacker.piece[:5]
+    board.enabled = False
+    if winColor == "white":
+        winscreen = Entity(
+        model = "quad",
+        texture = load_texture("whitewins"),
+        color = color.white,
+        scale = (40,40))
+
+    else:
+        winscreen = Entity(
+        model = "quad",
+        texture = load_texture("blackwins"),
+        color = color.white,
+        scale = (40,40))
 
     return True
+
+def check_stalemate(toPlay): #retuns false if stalemate is not there, retusn true if stalemate
+    if toPlay == "white":lastPlayed = "black"
+    else:lastPlayed = "white"
+
+    for tuple in chessboard:
+        piece = chessboard[tuple]
+        if piece == None:
+            continue
+
+        if lastPlayed in piece.piece:
+            continue
+
+        if "pawn" in piece.piece:
+            for move in piece.attackoptions:
+                if move in piece.options:
+                    piece.options.remove(move)
+                if not(move[0] <= -5 or move[0] >= 4 or move[1] >= 5 or move[1] <= -4):
+                    if chessboard[move] != None:
+                        if toPlay in chessboard[move].piece:
+                            continue
+
+                        else:
+                            temp1 = chessboard[move]
+
+                            chessboard[move] = piece
+                            chessboard[piece.x,piece.y] = None
+
+                            if "king" in piece.piece:
+                                piece.x = move[0]
+                                piece.y = move[1]
+
+                            if check_check(lastPlayed): #check for illegal move that caused by check.
+                                continue
+
+                            if "king" in piece.piece:
+                                piece.x = pos[0]
+                                piece.y = pos[1]
+
+                            chessboard[move] = temp1
+                            chessboard[piece.x,piece.y] = piece
+
+                            return False
+
+            for move in piece.options:
+                if not(move[0] <= -5 or move[0] >= 4 or move[1] >= 5 or move[1] <= -4):
+                    if check_collision((piece.x,piece.y), move, ""):
+
+                        temp1 = chessboard[move]
+
+                        chessboard[move] = piece
+                        chessboard[piece.x,piece.y] = None
+
+                        if "king" in piece.piece:
+                            piece.x = move[0]
+                            piece.y = move[1]
+
+                        if check_check(lastPlayed): #check for illegal move that caused by check.
+                            continue
+
+                        if "king" in piece.piece:
+                            piece.x = pos[0]
+                            piece.y = pos[1]
+
+                        chessboard[move] = temp1
+                        chessboard[piece.x,piece.y] = piece
+
+                        return False
+
+        for move in piece.options:
+            if not(move[0] <= -5 or move[0] >= 4 or move[1] >= 5 or move[1] <= -4):
+                if check_collision((piece.x,piece.y), move, ""):
+
+                    temp1 = chessboard[move]
+                    pos = (piece.x,piece.y)
+
+                    chessboard[move] = piece
+                    chessboard[pos] = None
+                    if "king" in piece.piece:
+                        piece.x = move[0]
+                        piece.y = move[1]
+
+                    if check_check(lastPlayed): #check for illegal move that caused by check.
+                        continue
+
+                    if "king" in piece.piece:
+                        piece.x = pos[0]
+                        piece.y = pos[1]
+
+                    chessboard[move] = temp1
+                    chessboard[pos] = piece
+
+
+
+                    return False
+
+    board.enabled = False
+    winscreen = Entity(
+    model = "quad",
+    texture = load_texture("stalemate"),
+    color = color.white,
+    scale = (40,40))
+
+    return True
+
+def change_piece(piece, pos):
+    board.enabled = True
+    chessboard[pos].enabled = False
+    del chessboard[pos]
+    board.add(piece, pos)
+    choiceBoard.enabled = False
+
+def check_threefold(lastPawn):
+
+    appendList = []
+    for coord in chessboard:
+        piece = chessboard[coord]
+        if piece == None:
+            appendList.append(piece)
+
+        else:
+            appendList.append(piece.piece)
+
+    count = 0
+    for chessboardState in chessboardList:
+        if chessboardState == appendList:
+            count += 1
+
+    if count == 2:
+        board.enabled = False
+        winscreen = Entity(
+        model = "quad",
+        texture = load_texture("threefold"),
+        color = color.white,
+        scale = (40,40))
+        board.enabled = False
+
+    else:
+        chessboardList.append(appendList)
+
 
 #The class for the board.
 class Square(Entity):
@@ -366,6 +524,7 @@ class Square(Entity):
 
             global lastPawn
             global turnCount
+            global choiceBoard
 
             #The code to place the piece
             piece.x = round(piece.x)
@@ -450,6 +609,19 @@ class Square(Entity):
                 toPlay = "black"
 
             if not illegalMove:
+                if "pawn" in piece.piece and (("white" in piece.piece and piece.y == 4) or ("black" in piece.piece and piece.y == -3)):
+                    print("promotion")
+
+                    piececolor = piece.piece[:5]
+                    board.enabled = False
+
+                    choiceBoard = Entity(scale = (40,40))
+                    x = Button(parent = choiceBoard, model = "quad", texture = load_texture(f"{piececolor}queen"), color = color.white, origin = (-.5,.5), scale = (1/8,1/8), on_click = Func(change_piece, f"{piececolor}queen", (piece.x, piece.y)))
+                    x = Button(parent = choiceBoard, model = "quad", texture = load_texture(f"{piececolor}knight"), color = color.white, origin = (.5,.5), scale = (1/8,1/8), on_click = Func(change_piece, f"{piececolor}knight", (piece.x, piece.y)))
+                    x = Button(parent = choiceBoard, model = "quad", texture = load_texture(f"{piececolor}rook"), color = color.white, origin = (.5,-.5), scale = (1/8,1/8), on_click = Func(change_piece, f"{piececolor}rook", (piece.x, piece.y)))
+                    x = Button(parent = choiceBoard, model = "quad", texture = load_texture(f"{piececolor}bishop"), color = color.white, origin = (-.5,-.5), scale = (1/8,1/8), on_click = Func(change_piece, f"{piececolor}bishop", (piece.x, piece.y)))
+
+
                 temp1 = chessboard[piece.x,piece.y]
 
                 chessboard[piece.x,piece.y] = piece
@@ -458,24 +630,31 @@ class Square(Entity):
                 if check_check(toPlay): #check for illegal move that caused by check.
                     illegalMove = True
 
-                if not check_check(lastPlayed) and checked_square != None and not illegalMove:
+                inCheck = check_check(lastPlayed)
+                if not inCheck and checked_square != None and not illegalMove:
                     if (checked_square.x - .5) % 2 == 0 and (checked_square.y + .5) % 2 == 0:
                         checked_square.color = color.rgba(240,217,181,255)
 
                     else:
                         checked_square.color = color.rgba(181,136,99,255)
 
+                if not inCheck and not illegalMove:
+                    if check_stalemate(toPlay):
+                        print("stalemate!!!")
+                        board.enabled = False
 
 
                 chessboard[piece.x,piece.y] = temp1
                 chessboard[piece.org_pos] = piece
 
-                if not check_check(lastPlayed) and checked_square != None: #this evaluting after check therefore not working
+                if not inCheck and checked_square != None: #this evaluting after check therefore not working
                     if (checked_square.x - .5) % 2 == (checked_square.y + .5) % 2:
                         checked_square.color = color.rgba(240,217,181,255)
 
                     else:
                         checked_square.color = color.rgba(181,136,99,255)
+
+
 
             # check_self_check()
             if illegalMove: #if out of bounds or illegal
@@ -500,6 +679,8 @@ class Square(Entity):
 
                 else:
                     lastPawn = None
+
+            check_threefold(lastPawn)
 
         piece.drag = drag
         piece.drop = drop
@@ -531,6 +712,18 @@ def make_board():
             pass
 
         y = 4 #For the top of the board
+
+    appendList = []
+    for coord in chessboard:
+        piece = chessboard[coord]
+        if piece == None:
+            appendList.append(piece)
+
+        else:
+            appendList.append(piece.piece)
+
+    chessboardList.append(appendList)
+
 
 #Initializing the board
 board = Square()
